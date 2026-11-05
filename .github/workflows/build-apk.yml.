@@ -1,0 +1,65 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Prepare Android app
+        run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          mkdir -p www
+          cp index.html sw.js manifest.webmanifest icon-192.png icon-512.png apple-touch-icon.png www/
+          cat > capacitor.config.json <<EOF
+          {
+            "appId": "com.chromedeck.app",
+            "appName": "Chrome Deck",
+            "webDir": "www",
+            "server": { "url": "https://${OWNER}.github.io/${REPO}/" },
+            "android": { "backgroundColor": "#0b0e15" }
+          }
+          EOF
+          echo '{"name":"chrome-deck","version":"1.0.0","private":true}' > package.json
+          npm install --no-audit --no-fund @capacitor/core@^6.2.0 @capacitor/cli@^6.2.0 @capacitor/android@^6.2.0
+          npx cap add android
+          RES=android/app/src/main/res
+          rm -f $RES/mipmap-anydpi-v26/ic_launcher*.xml
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            cp icon-192.png $RES/mipmap-$d/ic_launcher.png
+            cp icon-192.png $RES/mipmap-$d/ic_launcher_round.png
+          done
+          npx cap sync android
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Publish to Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk ChromeDeck.apk
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest ChromeDeck.apk --title "Chrome Deck APK" --notes "Скачай ChromeDeck.apk и установи на Android"
