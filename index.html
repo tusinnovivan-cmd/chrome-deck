@@ -41,7 +41,11 @@ body{
 .screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
   padding:calc(env(safe-area-inset-top,0px) + 44px) max(28px,env(safe-area-inset-right,0px)) calc(116px + env(safe-area-inset-bottom,0px)) max(28px,env(safe-area-inset-left,0px))}
 .screen.player{display:flex;flex-direction:column}
-.stage{width:min(100%,640px);margin:auto}
+.screen.player{padding-top:calc(env(safe-area-inset-top,0px) + 16px)}
+.stage{width:min(100%,640px);margin:clamp(20px,8vh,80px) auto auto}
+.topbar{flex:none;height:48px;width:min(100%,640px);margin:0 auto;display:flex;justify-content:flex-end;align-items:center}
+.bt{width:36px;height:36px;opacity:0;transform:scale(.7);transition:opacity .3s,transform .3s;filter:drop-shadow(0 0 8px rgba(190,227,255,.65)) drop-shadow(0 2px 3px rgba(0,0,0,.7))}
+.bt.on{opacity:1;transform:none}
 .libwrap{width:min(100%,640px);margin:0 auto;display:flex;flex-direction:column;gap:16px}
 
 /* --- panel --- */
@@ -184,7 +188,8 @@ input[type=range]:focus-visible,.btn:focus-visible,.mini:focus-visible,.handle:f
     <linearGradient id="railH" x1="0" y1="0" x2=".14" y2="1" spreadMethod="repeat">
       <stop offset="0" stop-color="#ffffff"/><stop offset=".3" stop-color="#8f98aa"/><stop offset=".5" stop-color="#05070a"/><stop offset=".75" stop-color="#e9edf5"/><stop offset="1" stop-color="#ffffff"/>
     </linearGradient>
-    <linearGradient id="icoBack" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f1f4f9"/><stop offset="1" stop-color="#8e97a8"/></linearGradient>
+    <linearGradient id="btG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".45" stop-color="#9aa3b4"/><stop offset=".6" stop-color="#f4f7fb"/><stop offset="1" stop-color="#5b6272"/></linearGradient>
+    <linearGradient id="icoBack"x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f1f4f9"/><stop offset="1" stop-color="#8e97a8"/></linearGradient>
     <radialGradient id="icoFront" cx=".5" cy=".5" r=".7"><stop offset="0" stop-color="#f4f6fa"/><stop offset=".55" stop-color="#aab2c0"/><stop offset="1" stop-color="#5f6778"/></radialGradient>
     <linearGradient id="railV" x1="0" y1="0" x2="1" y2=".14" spreadMethod="repeat">
       <stop offset="0" stop-color="#ffffff"/><stop offset=".3" stop-color="#8f98aa"/><stop offset=".5" stop-color="#05070a"/><stop offset=".75" stop-color="#e9edf5"/><stop offset="1" stop-color="#ffffff"/>
@@ -194,6 +199,13 @@ input[type=range]:focus-visible,.btn:focus-visible,.mini:focus-visible,.handle:f
 
 <div class="app">
 <main class="screen player" id="scrPlayer">
+<div class="topbar">
+  <svg class="bt" id="bt" viewBox="0 0 24 24" role="img" aria-label="Bluetooth подключён" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6.5 7.5L16.5 16.5L11.3 21.3V2.7L16.5 7.5L6.5 16.5" stroke="#05070a" stroke-width="4.6"/>
+    <path d="M6.5 7.5L16.5 16.5L11.3 21.3V2.7L16.5 7.5L6.5 16.5" stroke="url(#btG)" stroke-width="3"/>
+    <path d="M6.5 7.5L16.5 16.5L11.3 21.3V2.7L16.5 7.5L6.5 16.5" stroke="#fff" stroke-opacity=".8" stroke-width=".7" transform="translate(-.6 -.6)"/>
+  </svg>
+</div>
 <div class="stage">
   <div class="panel" id="deck">
     <svg class="strip top" id="sTop" aria-hidden="true"></svg>
@@ -520,6 +532,13 @@ input[type=range]:focus-visible,.btn:focus-visible,.mini:focus-visible,.handle:f
     if(name==='lib'){var c=$('#pl [aria-current]');if(c&&c.scrollIntoView)c.scrollIntoView({block:'center'})}
   }
   Array.prototype.forEach.call(navBtns,function(b){b.onclick=function(){show(b.dataset.screen)}});
+
+  /* bluetooth icon: the Android app (APK) reports connected headphones via DeckNative */
+  var btEl=$('#bt');
+  function setBt(on){btEl.classList.toggle('on',!!on)}
+  function pollBt(){try{if(window.DeckNative&&window.DeckNative.isBluetooth)setBt(window.DeckNative.isBluetooth())}catch(e){}}
+  window.addEventListener('deckbt',function(e){setBt(e.detail)});
+  pollBt();setInterval(function(){if(document.visibilityState==='visible')pollBt()},4000);
 
   /* edge glow follows the music (runs only while playing) */
   var cover=$('#cover'),raf=0;
